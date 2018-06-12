@@ -137,7 +137,9 @@
             <article class="md-content__inner md-typeset">
               {% block content %}
                 {% if page.edit_url %}
-                  <a href="{{ page.edit_url }}" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
+                  {% if page.input_path not in ('index.md', 'repos/index.md') %}
+                    <a href="{{ page.edit_url }}" target="_blank" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
+                  {% endif %}
                 {% endif %}
                 {% if not "\x3ch1" in page.content %}
                   <h1>{{ page.title | default(config.site_name, true)}}</h1>
@@ -170,7 +172,7 @@
       {% endblock %}
     </div>
     {% block scripts %}
-      <script src="{{ base_url }}/assets/javascripts/application.d0060b13.js"></script>
+      <script src="{{ base_url }}/assets/javascripts/application.689ac96f.js"></script>
       {% if lang.t("search.language") != "en" %}
         {% set languages = lang.t("search.language").split(",") %}
         {% if languages | length and languages[0] != "" %}
