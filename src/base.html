@@ -151,8 +151,8 @@
         href="{{ base_url }}/assets/fonts/material-icons.css" />
 
     <!-- Custom stylesheets -->
-    {% for path in extra_css %}
-      <link rel="stylesheet" type="text/css" href="{{ path }}" />
+    {% for path in config.extra_css %}
+      <link rel="stylesheet" type="text/css" href="{{ base_url }}/{{ path }}" />
     {% endfor %}
 
     <!-- Custom front matter -->
@@ -358,8 +358,8 @@
           }
         });
       </script>
-      {% for path in extra_javascript %}
-        <script src="{{ path }}"></script>
+      {% for path in config.extra_javascript %}
+        <script src="{{ base_url }}/{{ path }}"></script>
       {% endfor %}
     {% endblock %}
 
