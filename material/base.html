@@ -74,8 +74,8 @@
       {% endif %}
     {% endblock %}
     <link rel="stylesheet" href="{{ base_url }}/assets/fonts/material-icons.css">
-    {% for path in extra_css %}
-      <link rel="stylesheet" href="{{ path }}">
+    {% for path in config.extra_css %}
+      <link rel="stylesheet" href="{{ base_url }}/{{ path }}">
     {% endfor %}
     {% block extrahead %}{% endblock %}
   </head>
@@ -148,9 +148,6 @@
                     <a href="{{ page.edit_url }}" target="_blank" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
                   {% endif %}
                 {% endif %}
-                {% if not "\x3ch1" in page.content %}
-                  <h1>{{ page.title | default(config.site_name, true)}}</h1>
-                {% endif %}
                 {{ page.content }}
                 {% block source %}
                   {% if page and page.meta and page.meta.source %}
@@ -179,7 +176,7 @@
       {% endblock %}
     </div>
     {% block scripts %}
-      <script src="{{ base_url }}/assets/javascripts/application.689ac96f.js"></script>
+      <script src="{{ base_url }}/assets/javascripts/application.91d915f1.js"></script>
       {% if lang.t("search.language") != "en" %}
         {% set languages = lang.t("search.language").split(",") %}
         {% if languages | length and languages[0] != "" %}
@@ -201,8 +198,8 @@
         {% endif %}
       {% endif %}
       <script>app.initialize({version:"{{ mkdocs_version }}",url:{base:"{{ base_url }}"}})</script>
-      {% for path in extra_javascript %}
-        <script src="{{ path }}"></script>
+      {% for path in config.extra_javascript %}
+        <script src="{{ base_url }}/{{ path }}"></script>
       {% endfor %}
     {% endblock %}
     {% block analytics %}
