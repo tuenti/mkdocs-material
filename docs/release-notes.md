@@ -37,6 +37,10 @@ pip show mkdocs-material
 
 ## Changelog
 
+### 2.9.2 <small>_ June 29, 2018</small>
+
+* Added Hindi and Czech translations
+
 ### 2.9.1 <small>_ June 18, 2018</small>
 
 * Added support for different spellings for theme color
@@ -49,7 +53,7 @@ pip show mkdocs-material
 ### 2.9.0 <small>_ June 13, 2018</small>
 
 * Added support for theme color on Android
-* Fixed [#796][796] Rendering of nested tabbed code blocks
+* Fixed [#796][796]: Rendering of nested tabbed code blocks
 
   [796]: https://github.com/squidfunk/mkdocs-material/issues/796
 
