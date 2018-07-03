@@ -270,7 +270,7 @@
 
                 <!-- Edit button, if URL was defined -->
                 {% if page.edit_url %}
-                  {% if page.input_path not in ('index.md', 'repos/index.md') %}
+                  {% if page.file.src_path not in config.extra.no_edit_paths %}
                     <a href="{{ page.edit_url }}"
                         target="_blank"
                         title="{{ lang.t('edit.link.title') }}"
