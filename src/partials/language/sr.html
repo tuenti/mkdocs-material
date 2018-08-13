@@ -20,35 +20,26 @@
   IN THE SOFTWARE.
 -->
 
-<!-- Main navigation -->
-<nav class="md-nav md-nav--primary" data-md-level="0">
-
-  <!-- Site title -->
-  <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="{{ config.site_url | default(nav.homepage.url, true) | url }}"
-        title="{{ config.site_name }}" class="md-nav__button md-logo">
-      {% if config.theme.logo.icon %}
-        <i class="md-icon">{{ config.theme.logo.icon }}</i>
-      {% else %}
-        <img src="{{ config.theme.logo | url }}" width="48" height="48" />
-      {% endif %}
-    </a>
-    {{ config.site_name }}
-  </label>
-
-  <!-- Repository containing source -->
-  {% if config.repo_url %}
-    <div class="md-nav__source">
-      {% include "partials/source.html" %}
-    </div>
-  {% endif %}
-
-  <!-- Render item list -->
-  <ul class="md-nav__list" data-md-scrollfix>
-    {% for nav_item in nav %}
-      {% set path = "nav-" + loop.index | string %}
-      {% set level = 1 %}
-      {% include "partials/nav-item.html" %}
-    {% endfor %}
-  </ul>
-</nav>
+<!-- Translations: Serbian -->
+{% macro t(key) %}{{ {
+  "language": "sr",
+  "clipboard.copy": "Копирај у клипборд",
+  "clipboard.copied": "Ископирано у клипборд",
+  "edit.link.title": "Уреди страницу",
+  "footer.previous": "Претходно",
+  "footer.next": "Следеће",
+  "meta.comments": "Коментари",
+  "meta.source": "Извор",
+  "search.language": "",
+  "search.pipeline.stopwords": false,
+  "search.pipeline.trimmer": false,
+  "search.placeholder": "Претрага",
+  "search.result.placeholder": "Унесите појам претраге",
+  "search.result.none": "Нису пронађени документи",
+  "search.result.one": "1 резултат претраге",
+  "search.result.other": "# резултата претраге",
+  "search.tokenizer": "[\s\-]+",
+  "skip.link.title": "Иди на текст",
+  "source.link.title": "Иди у репозиторијум",
+  "toc.title": "Садржај"
+}[key] }}{% endmacro %}

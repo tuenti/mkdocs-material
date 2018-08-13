@@ -348,9 +348,15 @@ translations for all template variables and labels in the following languages:
     </tr>
     <tr>
       <td><code>ru</code> / Russian</td>
+      <td><code>sr</code> / Serbian</td>
+      <td><code>sh</code> / Serbo-Croatian</td>
       <td><code>sk</code> / Slovak</td>
+    </tr>
+    <tr>
       <td><code>es</code> / Spanish</td>
       <td><code>sv</code> / Swedish</td>
+      <td><code>tr</code> / Turkish</td>
+      <td><code>uk</code> / Ukrainian</td>
     </tr>
     <tr>
       <td colspan="2">
@@ -361,10 +367,8 @@ translations for all template variables and labels in the following languages:
       </td>
     </tr>
     <tr>
-      <td><code>tr</code> / Turkish</td>
-      <td><code>uk</code> / Ukrainian</td>
       <td><code>vi</code> / Vietnamese</td>
-      <td align="right">
+      <td colspan="3" align="right">
         <a href="http://bit.ly/2EbzFc8">Submit a new language</a>
       </td>
     </tr>
@@ -455,11 +459,13 @@ At the time of writing, the following languages are supported:
   </tbody>
 </table>
 
-!!! info "Search language support for Chinese"
+!!! warning "MkDocs 1.0 compatibility"
 
-    [lunr-languages][18] currently doesn't include a stemmer for Chinese or
-    other Asian languages, but uses the Japanese stemmer, as some users
-    reported pretty decent results.
+    While MkDocs 1.0 supports prebuilding the search index, Material currently
+    doesn't support this setting as the default search behavior of the original
+    theme was heavily modified for the sake of a better UX. Integration is
+    possible, but a small subset of the features Material provides will not be
+    portable to the prebuilt index mainly due to missing localization.
 
 !!! warning "Only specify the languages you really need"
 

@@ -20,35 +20,24 @@
   IN THE SOFTWARE.
 -->
 
-<!-- Main navigation -->
-<nav class="md-nav md-nav--primary" data-md-level="0">
-
-  <!-- Site title -->
-  <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="{{ config.site_url | default(nav.homepage.url, true) | url }}"
-        title="{{ config.site_name }}" class="md-nav__button md-logo">
-      {% if config.theme.logo.icon %}
-        <i class="md-icon">{{ config.theme.logo.icon }}</i>
-      {% else %}
-        <img src="{{ config.theme.logo | url }}" width="48" height="48" />
-      {% endif %}
-    </a>
-    {{ config.site_name }}
-  </label>
-
-  <!-- Repository containing source -->
-  {% if config.repo_url %}
-    <div class="md-nav__source">
-      {% include "partials/source.html" %}
-    </div>
-  {% endif %}
-
-  <!-- Render item list -->
-  <ul class="md-nav__list" data-md-scrollfix>
-    {% for nav_item in nav %}
-      {% set path = "nav-" + loop.index | string %}
-      {% set level = 1 %}
-      {% include "partials/nav-item.html" %}
-    {% endfor %}
-  </ul>
-</nav>
+<!-- Translations: Serbo-Croatian -->
+{% macro t(key) %}{{ {
+  "language": "sh",
+  "clipboard.copy": "Kopiraj u klipbord",
+  "clipboard.copied": "Iskopirano u klipbord",
+  "edit.link.title": "Uredi stranicu",
+  "footer.previous": "Prethodno",
+  "footer.next": "Sledeće",
+  "meta.comments": "Komentari",
+  "meta.source": "Izvor",
+  "search.language": "ro",
+  "search.placeholder": "Pretraga",
+  "search.result.placeholder": "Unesite pojam pretrage",
+  "search.result.none": "Ništa nije pronađeno",
+  "search.result.one": "1 rezultat pretrage",
+  "search.result.other": "# rezultata pretrage",
+  "search.tokenizer": "[\s\-]+",
+  "skip.link.title": "Idi na tekst",
+  "source.link.title": "Idi u repozitorijum",
+  "toc.title": "Sadržaj"
+}[key] }}{% endmacro %}

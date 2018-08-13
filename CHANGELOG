@@ -1,3 +1,30 @@
+mkdocs-material-3.0.3 (2018-08-07)
+
+  * Fixed #841: Additional path levels for extra CSS and JS
+
+mkdocs-material-3.0.2 (2018-08-06)
+
+  * Fixed #839: Lunr.js stemmer imports incorrect
+
+mkdocs-material-3.0.1 (2018-08-05)
+
+  * Fixed #838: Search result links incorrect
+
+mkdocs-material-3.0.0 (2018-08-05)
+
+  * Upgraded MkDocs to 1.0
+  * Upgraded Python in official Docker image to 3.6
+  * Added Serbian and Serbo-Croatian translations
+
+mkdocs-material-2.9.4 (2018-07-29)
+
+  * Fixed build error after MkDocs upgrade
+
+mkdocs-material-2.9.3 (2018-07-29)
+
+  * Added link to home for logo in drawer
+  * Fixed dependency problems between MkDocs and Tornado
+
 mkdocs-material-2.9.2 (2018-06-29)
 
   * Added Hindi and Czech translations
