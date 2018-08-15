@@ -293,12 +293,6 @@ function initialize(config) { // eslint-disable-line func-style
       }/search_index.json`, {
         credentials: "same-origin"
       }).then(response => response.json())
-        .then(data => {
-          return data.docs.map(doc => {
-            doc.location = `${config.url.base}/${doc.location}`
-            return doc
-          })
-        })
     })).listen()
 
     /* Listener: focus input after form reset */

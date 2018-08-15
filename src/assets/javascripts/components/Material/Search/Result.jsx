@@ -135,7 +135,7 @@ export default class Result {
       const init = data => {
 
         /* Preprocess and index sections and documents */
-        this.docs_ = data.reduce((docs, doc) => {
+        this.docs_ = data.docs.reduce((docs, doc) => {
           const [path, hash] = doc.location.split("#")
 
           /* Associate section with parent document */
@@ -157,51 +157,56 @@ export default class Result {
             .replace(/\s+([,.:;!?])/g,         /* Correct punctuation */
               (_, char) => char)
 
-          /* Index sections and documents, but skip top-level headline */
-          if (!doc.parent || doc.parent.title !== doc.title)
-            docs.set(doc.location, doc)
+          /* Index sections and documents */
+          docs.set(doc.location, doc)
           return docs
         }, new Map)
 
-        /* eslint-disable no-invalid-this */
-        const docs = this.docs_,
-              lang = this.lang_
-
         /* Create stack and index */
         this.stack_ = []
-        this.index_ = lunr(function() {
-          const filters = {
-            "search.pipeline.trimmer": lunr.trimmer,
-            "search.pipeline.stopwords": lunr.stopWordFilter
-          }
 
-          /* Disable stop words filter and trimmer, if desired */
-          const pipeline = Object.keys(filters).reduce((result, name) => {
-            if (!translate(name).match(/^false$/i))
-              result.push(filters[name])
-            return result
-          }, [])
+        if (data.index) {
+          // Pre-built index
+          this.index_ = lunr.Index.load(data.index)
+        } else {
+          /* eslint-disable no-invalid-this */
+          const docs = this.docs_,
+                lang = this.lang_
 
-          /* Remove stemmer, as it cripples search experience */
-          this.pipeline.reset()
-          if (pipeline)
-            this.pipeline.add(...pipeline)
+          this.index_ = lunr(function() {
+            const filters = {
+              "search.pipeline.trimmer": lunr.trimmer,
+              "search.pipeline.stopwords": lunr.stopWordFilter
+            }
 
-          /* Set up alternate search languages */
-          if (lang.length === 1 && lang[0] !== "en" && lunr[lang[0]]) {
-            this.use(lunr[lang[0]])
-          } else if (lang.length > 1) {
-            this.use(lunr.multiLanguage(...lang))
-          }
+            /* Disable stop words filter and trimmer, if desired */
+            const pipeline = Object.keys(filters).reduce((result, name) => {
+              if (!translate(name).match(/^false$/i))
+                result.push(filters[name])
+              return result
+            }, [])
 
-          /* Index fields */
-          this.field("title", { boost: 10 })
-          this.field("text")
-          this.ref("location")
+            /* Remove stemmer, as it cripples search experience */
+            this.pipeline.reset()
+            if (pipeline)
+              this.pipeline.add(...pipeline)
 
-          /* Index documents */
-          docs.forEach(doc => this.add(doc))
-        })
+            /* Set up alternate search languages */
+            if (lang.length === 1 && lang[0] !== "en" && lunr[lang[0]]) {
+              this.use(lunr[lang[0]])
+            } else if (lang.length > 1) {
+              this.use(lunr.multiLanguage(...lang))
+            }
+
+            /* Index fields */
+            this.field("title", { boost: 10 })
+            this.field("text")
+            this.ref("location")
+
+            /* Index documents */
+            docs.forEach(doc => this.add(doc))
+          })
+        }
 
         /* Register event handler for lazy rendering */
         const container = this.el_.parentNode
@@ -246,19 +251,14 @@ export default class Result {
       /* Perform search on index and group sections by document */
       const result = this.index_
 
-        /* Append trailing wildcard to all terms for prefix querying */
-        .query(query => {
-          this.value_.toLowerCase().split(" ")
-            .filter(Boolean)
-            .forEach(term => {
-              query.term(term, { wildcard: lunr.Query.wildcard.TRAILING })
-            })
-        })
+        .search(this.value_)
 
         /* Process query results */
         .reduce((items, item) => {
           const doc = this.docs_.get(item.ref)
-          if (doc.parent) {
+          if (doc.parent && doc.parent.title === doc.title){
+            // skip top-level headline
+          } else if (doc.parent) {
             const ref = doc.parent.location
             items.set(ref, (items.get(ref) || []).concat(item))
           } else {
@@ -280,11 +280,12 @@ export default class Result {
       this.stack_ = []
       result.forEach((items, ref) => {
         const doc = this.docs_.get(ref)
+        const docLocation = "/" + doc.location // FIXME add config base url
 
         /* Render article */
         const article = (
           <li class="md-search-result__item">
-            <a href={doc.location} title={doc.title}
+            <a href={docLocation} title={doc.title}
               class="md-search-result__link" tabindex="-1">
               <article class="md-search-result__article
                     md-search-result__article--document">
@@ -304,8 +305,9 @@ export default class Result {
         const sections = items.map(item => {
           return () => {
             const section = this.docs_.get(item.ref)
+            const sectionLocation = "/" + section.location // FIXME add config base url
             article.appendChild(
-              <a href={section.location} title={section.title}
+              <a href={sectionLocation} title={section.title}
                 class="md-search-result__link" data-md-rel="anchor"
                 tabindex="-1">
                 <article class="md-search-result__article">
