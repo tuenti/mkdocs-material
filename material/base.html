@@ -146,6 +146,10 @@
                 {% if page.edit_url %}
                   {% if page.file.src_path not in config.extra.no_edit_paths %}
                     <a href="{{ page.edit_url }}" target="_blank" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
+                    {% if config.extra.new_file_uri %}
+                    {% set parent_path = page.file.src_path.split('/')[:-1] | join('/') + '/' %}
+                    <a href="{{ config.extra.new_file_uri }}{{ parent_path }}" target="_blank" title="Create new file" class="md-icon md-content__icon">&#xE89C;</a>
+                    {% endif %}
                   {% endif %}
                 {% endif %}
                 {% if not "\x3ch1" in page.content %}

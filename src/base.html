@@ -275,6 +275,13 @@
                         target="_blank"
                         title="{{ lang.t('edit.link.title') }}"
                         class="md-icon md-content__icon">&#xE3C9;<!-- edit --></a>
+                    {% if config.extra.new_file_uri %}
+                    {% set parent_path = page.file.src_path.split('/')[:-1] | join('/') + '/' %}
+                    <a href="{{ config.extra.new_file_uri }}{{ parent_path }}"
+                       target="_blank"
+                       title="Create new file"
+                       class="md-icon md-content__icon">&#xE89C;<!-- add doc --></a>
+                    {% endif %}
                   {% endif %}
                 {% endif %}
 
