@@ -48,7 +48,7 @@
       {% endif %}
     {% endblock %}
     {% block styles %}
-      <link rel="stylesheet" href="{{ 'assets/stylesheets/application.11e41852.css' | url }}">
+      <link rel="stylesheet" href="{{ 'assets/stylesheets/application.22f8b5b8.css' | url }}">
       {% if palette.primary or palette.accent %}
         <link rel="stylesheet" href="{{ 'assets/stylesheets/application-palette.22915126.css' | url }}">
       {% endif %}
@@ -143,15 +143,7 @@
           <div class="md-content">
             <article class="md-content__inner md-typeset">
               {% block content %}
-                {% if page.edit_url %}
-                  {% if page.file.src_path not in config.extra.no_edit_paths %}
-                    <a href="{{ page.edit_url }}" target="_blank" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
-                    {% if config.extra.new_file_uri %}
-                    {% set parent_path = page.file.src_path.split('/')[:-1] | join('/') + '/' %}
-                    <a href="{{ config.extra.new_file_uri }}{{ parent_path }}" target="_blank" title="Create new file" class="md-icon md-content__icon">&#xE89C;</a>
-                    {% endif %}
-                  {% endif %}
-                {% endif %}
+                {% include "partials/breadcrumbs.html" %}
                 {% if not "\x3ch1" in page.content %}
                   <h1 style="display:none">{{ page.title | default(config.site_name, true)}}</h1>
                 {% endif %}

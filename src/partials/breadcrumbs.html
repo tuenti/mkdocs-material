@@ -1,0 +1,34 @@
+<div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    {% if config.extra.breadcrumbs and page and page.ancestors and page.ancestors|length > 1 %}
+      {% for doc in page.ancestors | reverse %}
+        {% if doc.children and doc.children[0].is_index and doc.children[0].url%}
+          <li class="wy-breadcrumbs-main"><a href="{{ doc.children[0].url|url }}">{{ doc.title }}</a> &raquo;</li>
+        {% else %}
+          <li class="wy-breadcrumbs-main">{{ doc.title }} &raquo;</li>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    <li class="wy-breadcrumbs-aside">
+      <!-- Edit button, if URL was defined -->
+      {% if page.edit_url %}
+        {% if page.file.src_path not in config.extra.no_edit_paths %}
+          <a href="{{ page.edit_url }}"
+              target="_blank"
+              title="{{ lang.t('edit.link.title') }}"
+              class="md-icon md-content__icon">&#xE3C9;<!-- edit --></a>
+          {% if config.extra.new_file_uri %}
+          {% set parent_path = page.file.src_path.split('/')[:-1] | join('/') + '/' %}
+          <a href="{{ config.extra.new_file_uri }}{{ parent_path }}"
+             target="_blank"
+             title="Create new file"
+             class="md-icon md-content__icon">&#xE89C;<!-- add doc --></a>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </li>
+  </ul>
+  {% if config.extra.breadcrumbs and page and page.ancestors and page.ancestors|length > 1 %}
+  <hr class="wy-breadcrumbs-hr">
+  {% endif %}
+</div>

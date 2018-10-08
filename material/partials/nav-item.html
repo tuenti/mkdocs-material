@@ -2,7 +2,11 @@
 {% if nav_item.active %}
   {% set class = "md-nav__item md-nav__item--active" %}
 {% endif %}
-{% if nav_item.children %}
+{% if nav_item.children and nav_item.children|length == 1 and nav_item.children[0].is_index %}
+  {% for nav_item in nav_item.children %}
+    {% include "partials/nav-item.html" %}
+  {% endfor %}
+{% elif nav_item.children %}
   <li class="{{ class }} md-nav__item--nested">
     {% if nav_item.active %}
       <input class="md-toggle md-nav__toggle" data-md-toggle="{{ path }}" type="checkbox" id="{{ path }}" checked>

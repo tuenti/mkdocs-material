@@ -26,8 +26,14 @@
   {% set class = "md-nav__item md-nav__item--active" %}
 {% endif %}
 
+<!-- Collapse navigation item with only index as nested item -->
+{% if nav_item.children and nav_item.children|length == 1 and nav_item.children[0].is_index %}
+  {% for nav_item in nav_item.children %}
+    {% include "partials/nav-item.html" %}
+  {% endfor %}
+
 <!-- Main navigation item with nested items -->
-{% if nav_item.children %}
+{% elif nav_item.children %}
   <li class="{{ class }} md-nav__item--nested">
 
     <!-- Active checkbox expands items contained within nested section -->
