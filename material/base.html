@@ -48,7 +48,7 @@
       {% endif %}
     {% endblock %}
     {% block styles %}
-      <link rel="stylesheet" href="{{ 'assets/stylesheets/application.22f8b5b8.css' | url }}">
+      <link rel="stylesheet" href="{{ 'assets/stylesheets/application.bd755d3c.css' | url }}">
       {% if palette.primary or palette.accent %}
         <link rel="stylesheet" href="{{ 'assets/stylesheets/application-palette.22915126.css' | url }}">
       {% endif %}
@@ -61,7 +61,7 @@
       {% endif %}
     {% endblock %}
     {% block libs %}
-      <script src="{{ 'assets/javascripts/modernizr.1aa3b519.js' | url }}"></script>
+      <script src="{{ 'assets/javascripts/modernizr.da468a5e.js' | url }}"></script>
     {% endblock %}
     {% block fonts %}
       {% if font != false %}
@@ -175,7 +175,7 @@
       {% endblock %}
     </div>
     {% block scripts %}
-      <script src="{{ 'assets/javascripts/application.aebe5456.js' | url }}"></script>
+      <script src="{{ 'assets/javascripts/application.a3707139.js' | url }}"></script>
       {% if lang.t("search.language") != "en" %}
         {% set languages = lang.t("search.language").split(",") %}
         {% if languages | length and languages[0] != "" %}
@@ -196,7 +196,7 @@
           {% endif %}
         {% endif %}
       {% endif %}
-      <script>app.initialize({version:"{{ mkdocs_version }}",url:{base:"{{ base_url }}"}})</script>
+      <script>app.initialize({version:"{{ mkdocs_version }}",url:{base:"{{ base_url }}"},es_host:"{{ config.es_host }}",es_log_level:"{{ config.es_log_level | default('error') }}"})</script>
       {% for path in config["extra_javascript"] %}
         <script src="{{ path | url }}"></script>
       {% endfor %}

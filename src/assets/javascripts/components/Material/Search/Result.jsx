@@ -22,6 +22,7 @@
 
 import escape from "escape-string-regexp"
 import lunr from "expose-loader?lunr!lunr"
+import elasticsearch from "elasticsearch"
 
 /* ----------------------------------------------------------------------------
  * Functions
@@ -86,7 +87,7 @@ export default class Result {
    * @param {(string|HTMLElement)} el - Selector or HTML element
    * @param {(Array<Object>|Function)} data - Function providing data or array
    */
-  constructor(el, data) {
+  constructor(el, data, es_host, es_log_level) {
     const ref = (typeof el === "string")
       ? document.querySelector(el)
       : el
@@ -119,6 +120,11 @@ export default class Result {
     this.lang_ = translate("search.language").split(",")
       .filter(Boolean)
       .map(lang => lang.trim())
+
+    this.es_client = new elasticsearch.Client({
+      host: es_host,
+      log: es_log_level
+    });
   }
 
   /**
@@ -129,85 +135,9 @@ export default class Result {
   update(ev) {
 
     /* Initialize index, if this has not be done yet */
-    if (ev.type === "focus" && !this.index_) {
-
-      /* Initialize index */
-      const init = data => {
-
-        /* Preprocess and index sections and documents */
-        this.docs_ = data.docs.reduce((docs, doc) => {
-          const [path, hash] = doc.location.split("#")
-
-          /* Associate section with parent document */
-          if (hash) {
-            doc.parent = docs.get(path)
-
-            /* Override page title with document title if first section */
-            if (doc.parent && !doc.parent.done) {
-              doc.parent.title = doc.title
-              doc.parent.text  = doc.text
-              doc.parent.done  = true
-            }
-          }
-
-          /* Some cleanup on the text */
-          doc.text = doc.text
-            .replace(/\n/g, " ")               /* Remove newlines */
-            .replace(/\s+/g, " ")              /* Compact whitespace */
-            .replace(/\s+([,.:;!?])/g,         /* Correct punctuation */
-              (_, char) => char)
-
-          /* Index sections and documents */
-          docs.set(doc.location, doc)
-          return docs
-        }, new Map)
-
-        /* Create stack and index */
-        this.stack_ = []
-
-        if (data.index) {
-          // Pre-built index
-          this.index_ = lunr.Index.load(data.index)
-        } else {
-          /* eslint-disable no-invalid-this */
-          const docs = this.docs_,
-                lang = this.lang_
-
-          this.index_ = lunr(function() {
-            const filters = {
-              "search.pipeline.trimmer": lunr.trimmer,
-              "search.pipeline.stopwords": lunr.stopWordFilter
-            }
-
-            /* Disable stop words filter and trimmer, if desired */
-            const pipeline = Object.keys(filters).reduce((result, name) => {
-              if (!translate(name).match(/^false$/i))
-                result.push(filters[name])
-              return result
-            }, [])
-
-            /* Remove stemmer, as it cripples search experience */
-            this.pipeline.reset()
-            if (pipeline)
-              this.pipeline.add(...pipeline)
-
-            /* Set up alternate search languages */
-            if (lang.length === 1 && lang[0] !== "en" && lunr[lang[0]]) {
-              this.use(lunr[lang[0]])
-            } else if (lang.length > 1) {
-              this.use(lunr.multiLanguage(...lang))
-            }
-
-            /* Index fields */
-            this.field("title", { boost: 10 })
-            this.field("text")
-            this.ref("location")
-
-            /* Index documents */
-            docs.forEach(doc => this.add(doc))
-          })
-        }
-
+    if (ev.type === "focus" && !this.initialized_) {
+        console.log(this.elastic_host_)
+        this.initialized_ = true
         /* Register event handler for lazy rendering */
         const container = this.el_.parentNode
         if (!(container instanceof HTMLElement))
@@ -217,15 +147,6 @@ export default class Result {
               container.offsetHeight >= container.scrollHeight - 16)
             this.stack_.splice(0, 10).forEach(render => render())
         })
-      }
-      /* eslint-enable no-invalid-this */
-
-      /* Initialize index after short timeout to account for transition */
-      setTimeout(() => {
-        return typeof this.data_ === "function"
-          ? this.data_().then(init)
-          : init(this.data_)
-      }, 250)
 
     /* Execute search on new input event */
     } else if (ev.type === "focus" || ev.type === "keyup") {
@@ -234,7 +155,7 @@ export default class Result {
         throw new ReferenceError
 
       /* Abort early, if index is not build or input hasn't changed */
-      if (!this.index_ || target.value === this.value_)
+      if (!this.initialized_ || target.value === this.value_)
         return
 
       /* Clear current list */
@@ -249,134 +170,179 @@ export default class Result {
       }
 
       /* Perform search on index and group sections by document */
-      const result = this.index_
-
-        .search(this.value_)
-
-        /* Process query results */
-        .reduce((items, item) => {
-          const doc = this.docs_.get(item.ref)
-          if (doc.parent && doc.parent.title === doc.title){
-            // skip top-level headline
-          } else if (doc.parent) {
-            const ref = doc.parent.location
-            items.set(ref, (items.get(ref) || []).concat(item))
-          } else {
-            const ref = doc.location
-            items.set(ref, (items.get(ref) || []))
+      const post_body = {
+        "_source": ["title", "location"],
+        "size": 50,
+        "query": {
+          "bool": {
+            "must": [
+              {
+                "match": {
+                  "parent_document": "full_doc"
+                }
+              },
+              {
+                "bool": {
+                  "should": [
+                    {
+                      "match": {
+                        "title": {
+                          "query": this.value_,
+                          "boost": 5
+                        }
+                      }
+                    },
+                    {
+                      "match": {
+                        "text": {
+                          "query": this.value_,
+                          "boost": 3
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
           }
-          return items
-        }, new Map)
+        },
+        "highlight": {
+          "fields": {
+            "text": {},
+            "title": {}
+          },
+          "pre_tags": "<em>",
+          "post_tags": "</em>"
+        }
+      }
 
-      /* Assemble regular expressions for matching */
-      const query = escape(this.value_.trim()).replace(
-        new RegExp(lunr.tokenizer.separator, "img"), "|")
-      const match =
-        new RegExp(`(^|${lunr.tokenizer.separator})(${query})`, "img")
-      const highlight = (_, separator, token) =>
-        `${separator}<em>${token}</em>`
+      var outer_this = this
+      this.es_client.search({
+        index: 'mkdocs',
+        body: post_body
+      }, function (error, response, status) {
+        if (error) {
+          console.log("search error: "+error)
+        }
+        else {
+          var result = response.hits.hits
 
-      /* Reset stack and render results */
-      this.stack_ = []
-      result.forEach((items, ref) => {
-        const doc = this.docs_.get(ref)
-        const docLocation = "/" + doc.location // FIXME add config base url
-
-        /* Render article */
-        const article = (
-          <li class="md-search-result__item">
-            <a href={docLocation} title={doc.title}
-              class="md-search-result__link" tabindex="-1">
-              <article class="md-search-result__article
-                    md-search-result__article--document">
-                <h1 class="md-search-result__title">
-                  {{ __html: doc.title.replace(match, highlight) }}
-                </h1>
-                {doc.text.length ?
-                  <p class="md-search-result__teaser">
-                    {{ __html: doc.text.replace(match, highlight) }}
-                  </p> : {}}
-              </article>
-            </a>
-          </li>
-        )
-
-        /* Render sections for article */
-        const sections = items.map(item => {
-          return () => {
-            const section = this.docs_.get(item.ref)
-            const sectionLocation = "/" + section.location // FIXME add config base url
-            article.appendChild(
-              <a href={sectionLocation} title={section.title}
-                class="md-search-result__link" data-md-rel="anchor"
-                tabindex="-1">
-                <article class="md-search-result__article">
-                  <h1 class="md-search-result__title">
-                    {{ __html: section.title.replace(match, highlight) }}
-                  </h1>
-                  {section.text.length ?
-                    <p class="md-search-result__teaser">
-                      {{ __html: truncate(
-                        section.text.replace(match, highlight), 400)
-                      }}
-                    </p> : {}}
-                </article>
-              </a>
-            )
-          }
-        })
-
-        /* Push articles and section renderers onto stack */
-        this.stack_.push(() => this.list_.appendChild(article), ...sections)
-      })
-
-      /* Gradually add results as long as the height of the container grows */
-      const container = this.el_.parentNode
-      if (!(container instanceof HTMLElement))
-        throw new ReferenceError
-      while (this.stack_.length &&
-          container.offsetHeight >= container.scrollHeight - 16)
-        (this.stack_.shift())()
-
-      /* Bind click handlers for anchors */
-      const anchors = this.list_.querySelectorAll("[data-md-rel=anchor]")
-      Array.prototype.forEach.call(anchors, anchor => {
-        ["click", "keydown"].forEach(action => {
-          anchor.addEventListener(action, ev2 => {
-            if (action === "keydown" && ev2.keyCode !== 13)
-              return
-
-            /* Close search */
-            const toggle = document.querySelector("[data-md-toggle=search]")
-            if (!(toggle instanceof HTMLInputElement))
-              throw new ReferenceError
-            if (toggle.checked) {
-              toggle.checked = false
-              toggle.dispatchEvent(new CustomEvent("change"))
+          /* Reset stack and render results */
+          outer_this.stack_ = []
+          result.forEach((hit) => {
+            const articleLocation = "/" + hit._source.location // FIXME add config base url
+            var title_str = hit._source.title
+            if (hit.highlight.title) {
+              title_str = hit.highlight.title[0]
+            }
+            var teaserHighlight = ""
+            if (hit.highlight.text) {
+              teaserHighlight = hit.highlight.text[0]
             }
 
-            /* Hack: prevent default, as the navigation needs to be delayed due
-               to the search body lock on mobile */
-            ev2.preventDefault()
-            setTimeout(() => {
-              document.location.href = anchor.href
-            }, 100)
-          })
-        })
-      })
+            /* Render article */
+            const article = (
+              <li class="md-search-result__item">
+                <a href={articleLocation} title={hit._source.title}
+                  class="md-search-result__link" tabindex="-1">
+                  <article class="md-search-result__article
+                        md-search-result__article--document">
+                    <h1 class="md-search-result__title">
+                      {{ __html: title_str }}
+                    </h1>
+                      <p class="md-search-result__teaser">
+                        {{ __html: teaserHighlight }}
+                      </p>
+                  </article>
+                </a>
+              </li>
+            )
 
-      /* Update search metadata */
-      switch (result.size) {
-        case 0:
-          this.meta_.textContent = this.message_.none
-          break
-        case 1:
-          this.meta_.textContent = this.message_.one
-          break
-        default:
-          this.meta_.textContent =
-            this.message_.other.replace("#", result.size)
-      }
+            /* Render sections for article */
+            const sections = []
+            /* const sections = section_result.map(hit => {
+              return () => {
+                const sectionLocation = "/" + hit._source.location // FIXME add config base url
+                var title_str = hit._source.title
+                if (hit.highlight.title) {
+                  title_str = hit.highlight.title[0]
+                }
+                article.appendChild(
+                  <a href={sectionLocation} title={section.title}
+                    class="md-search-result__link" data-md-rel="anchor"
+                    tabindex="-1">
+                    <article class="md-search-result__article">
+                      <h1 class="md-search-result__title">
+                        {{ __html: section.title }}
+                      </h1>
+                      {section.text.length ?
+                        <p class="md-search-result__teaser">
+                          {{ __html: truncate(
+                            section.text, 400)
+                          }}
+                        </p> : {}}
+                    </article>
+                  </a>
+                )
+              }
+            }) */
+
+            /* Push articles and section renderers onto stack */
+            outer_this.stack_.push(() => outer_this.list_.appendChild(article), ...sections)
+          })
+
+          /* Gradually add results as long as the height of the container grows */
+          const container = outer_this.el_.parentNode
+          if (!(container instanceof HTMLElement))
+            throw new ReferenceError
+          while (outer_this.stack_.length &&
+              container.offsetHeight >= container.scrollHeight - 16)
+            (outer_this.stack_.shift())()
+
+          /* Bind click handlers for anchors */
+          const anchors = outer_this.list_.querySelectorAll("[data-md-rel=anchor]")
+          Array.prototype.forEach.call(anchors, anchor => {
+            ["click", "keydown"].forEach(action => {
+              anchor.addEventListener(action, ev2 => {
+                if (action === "keydown" && ev2.keyCode !== 13)
+                  return
+
+                /* Close search */
+                const toggle = document.querySelector("[data-md-toggle=search]")
+                if (!(toggle instanceof HTMLInputElement))
+                  throw new ReferenceError
+                if (toggle.checked) {
+                  toggle.checked = false
+                  toggle.dispatchEvent(new CustomEvent("change"))
+                }
+
+                /* Hack: prevent default, as the navigation needs to be delayed due
+                   to the search body lock on mobile */
+                ev2.preventDefault()
+                setTimeout(() => {
+                  document.location.href = anchor.href
+                }, 100)
+              })
+            })
+          })
+
+          /* Update search metadata */
+          switch (response.hits.total.value) {
+            case 0:
+              outer_this.meta_.textContent = outer_this.message_.none
+              break
+            case 1:
+              outer_this.meta_.textContent = outer_this.message_.one
+              break
+            default:
+              outer_this.meta_.textContent =
+                outer_this.message_.other.replace("#", response.hits.total.value)
+          }
+
+        }
+      });
+
+
     }
   }
 }

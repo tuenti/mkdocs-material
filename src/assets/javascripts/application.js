@@ -293,7 +293,7 @@ function initialize(config) { // eslint-disable-line func-style
       }/search_index.json`, {
         credentials: "same-origin"
       }).then(response => response.json())
-    })).listen()
+    }, config.es_host, config.es_log_level)).listen()
 
     /* Listener: focus input after form reset */
     new Material.Event.Listener("[data-md-component=reset]", "click", () => {

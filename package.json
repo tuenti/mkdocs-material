@@ -47,6 +47,7 @@
     "cssmin": "^0.4.3",
     "custom-event-polyfill": "^1.0.6",
     "customizr": "^1.0.0-alpha",
+    "elasticsearch": "^16.2.0",
     "escape-string-regexp": "^1.0.5",
     "eslint": "^4.3.0",
     "event-hooks-webpack-plugin": "^1.0.0",
