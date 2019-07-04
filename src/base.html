@@ -350,8 +350,8 @@
           url: {
             base: "{{ base_url }}"
           },
-          es_host: "{{ config.es_host }}",
-          es_log_level: "{{ config.es_log_level | default('error') }}"
+          es_host: "{{ config.extra.es_host }}",
+          es_log_level: "{{ config.extra.es_log_level | default('error') }}"
         });
       </script>
       {% for path in config["extra_javascript"] %}
