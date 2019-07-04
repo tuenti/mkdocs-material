@@ -62,6 +62,31 @@ const translate = key => {
   return meta.content
 }
 
+/**
+ * Return a deep copy of an object
+ *
+ * @param {string} obj - The object to be copied
+ *
+ * @return {string} The copied object
+ */
+const deepclone = obj => {
+  var new_obj = {}
+
+  Object.keys(obj).forEach(function(key) {
+    new_obj[ key ] = obj[ key ];
+  });
+  return new_obj
+}
+
+/**
+ * TO BE COMPLETED
+ *
+ * @param {string} a - A
+ *
+ * @return {string} B
+ */
+const getData = (resultObj, page) => {
+}
 /* ----------------------------------------------------------------------------
  * Class
  * ------------------------------------------------------------------------- */
@@ -136,7 +161,6 @@ export default class Result {
 
     /* Initialize index, if this has not be done yet */
     if (ev.type === "focus" && !this.initialized_) {
-        console.log(this.elastic_host_)
         this.initialized_ = true
         /* Register event handler for lazy rendering */
         const container = this.el_.parentNode
@@ -215,10 +239,9 @@ export default class Result {
           "post_tags": "</em>"
         }
       }
-
       var outer_this = this
       this.es_client.search({
-        index: 'mkdocs',
+        index: 'mkdocs', // TODO: parametrize index name
         body: post_body
       }, function (error, response, status) {
         if (error) {
@@ -226,108 +249,192 @@ export default class Result {
         }
         else {
           var result = response.hits.hits
-
+          var total_results = response.hits.total.value
           /* Reset stack and render results */
           outer_this.stack_ = []
+          var msearch_body = []
           result.forEach((hit) => {
-            const articleLocation = "/" + hit._source.location // FIXME add config base url
-            var title_str = hit._source.title
+            // Enrich sections
+            var size = 0
             if (hit.highlight.title) {
-              title_str = hit.highlight.title[0]
+              size += hit.highlight.title.length
             }
-            var teaserHighlight = ""
             if (hit.highlight.text) {
-              teaserHighlight = hit.highlight.text[0]
+              size += hit.highlight.text.length
             }
-
-            /* Render article */
-            const article = (
-              <li class="md-search-result__item">
-                <a href={articleLocation} title={hit._source.title}
-                  class="md-search-result__link" tabindex="-1">
-                  <article class="md-search-result__article
-                        md-search-result__article--document">
-                    <h1 class="md-search-result__title">
-                      {{ __html: title_str }}
-                    </h1>
-                      <p class="md-search-result__teaser">
-                        {{ __html: teaserHighlight }}
-                      </p>
-                  </article>
-                </a>
-              </li>
-            )
-
-            /* Render sections for article */
-            const sections = []
-            /* const sections = section_result.map(hit => {
-              return () => {
-                const sectionLocation = "/" + hit._source.location // FIXME add config base url
-                var title_str = hit._source.title
-                if (hit.highlight.title) {
-                  title_str = hit.highlight.title[0]
+            const section_post_body = { // Didn't want to repeat myself, but life is hard sometimes
+              "_source": ["title", "location", "text"],
+              "size": size,
+              "query": {
+                "bool": {
+                  "must": [
+                    {
+                      "match": {
+                        "parent_document": "section"
+                      }
+                    },
+                    {
+                      "parent_id": {
+                        "type": "section",
+                        "id": hit._id
+                      }
+                    },
+                    {
+                      "bool": {
+                        "should": [
+                          {
+                            "match": {
+                              "title": {
+                                "query": outer_this.value_,
+                                "boost": 5
+                              }
+                            }
+                          },
+                          {
+                            "match": {
+                              "text": {
+                                "query": outer_this.value_,
+                                "boost": 3
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
                 }
-                article.appendChild(
-                  <a href={sectionLocation} title={section.title}
-                    class="md-search-result__link" data-md-rel="anchor"
-                    tabindex="-1">
-                    <article class="md-search-result__article">
-                      <h1 class="md-search-result__title">
-                        {{ __html: section.title }}
-                      </h1>
-                      {section.text.length ?
-                        <p class="md-search-result__teaser">
-                          {{ __html: truncate(
-                            section.text, 400)
-                          }}
-                        </p> : {}}
-                    </article>
-                  </a>
-                )
+              },
+              "highlight": {
+                "fields": {
+                  "text": {},
+                  "title": {}
+                },
+                "pre_tags": "<em>",
+                "post_tags": "</em>"
               }
-            }) */
-
-            /* Push articles and section renderers onto stack */
-            outer_this.stack_.push(() => outer_this.list_.appendChild(article), ...sections)
+            }
+            msearch_body.push({"index": "mkdocs"}) // TODO: Parametrize
+            msearch_body.push(section_post_body)
           })
+          if (msearch_body.length > 0) {
+            outer_this.es_client.msearch({
+              body: msearch_body
+            }, function (error, sections_response, status) {
+              if (error) {
+                console.log("msearch error: "+error)
+              }
+              else {
+                console.log("MSearch took", sections_response.took)
+                var section_result = sections_response.responses
+                section_result.forEach((section_hit, index) => {
+                  const hit = result[index]
+                  const articleLocation = "/" + hit._source.location // FIXME add config base url
+                  var title_str = hit._source.title
+                  if (hit.highlight.title) {
+                    title_str = hit.highlight.title[0]
+                  }
 
-          /* Gradually add results as long as the height of the container grows */
-          const container = outer_this.el_.parentNode
-          if (!(container instanceof HTMLElement))
-            throw new ReferenceError
-          while (outer_this.stack_.length &&
-              container.offsetHeight >= container.scrollHeight - 16)
-            (outer_this.stack_.shift())()
+                  // Try to find the best title teaser
+                  var teaserHighlight = ""
+                  section_hit.hits.hits.forEach((section_obj) => {
+                    if (section_obj._source.title == result[index]._source.title) {
+                      if (section_obj.highlight.text) {
+                        teaserHighlight = section_obj.highlight.text[0]
+                      }
+                    }
+                  })
 
-          /* Bind click handlers for anchors */
-          const anchors = outer_this.list_.querySelectorAll("[data-md-rel=anchor]")
-          Array.prototype.forEach.call(anchors, anchor => {
-            ["click", "keydown"].forEach(action => {
-              anchor.addEventListener(action, ev2 => {
-                if (action === "keydown" && ev2.keyCode !== 13)
-                  return
+                  /* Render article */
+                  const article = (
+                    <li class="md-search-result__item">
+                      <a href={articleLocation} title={hit._source.title}
+                        class="md-search-result__link" tabindex="-1">
+                        <article class="md-search-result__article md-search-result__article--document">
+                          <h1 class="md-search-result__title">
+                            {{ __html: title_str }}
+                          </h1>
+                          { teaserHighlight ?
+                            <p class="md-search-result__teaser">
+                              {{ __html: teaserHighlight }}
+                            </p> : {}}
+                        </article>
+                      </a>
+                    </li>
+                  )
 
-                /* Close search */
-                const toggle = document.querySelector("[data-md-toggle=search]")
-                if (!(toggle instanceof HTMLInputElement))
+                  /* Render sections for article */
+                  // const sections = []
+                  const sections = section_hit.hits.hits.map(hit => {
+                    return () => {
+                      const sectionLocation = "/" + hit._source.location // FIXME add config base url
+                      var title_str = hit._source.title
+                      if (hit.highlight.title) {
+                        title_str = hit.highlight.title[0]
+                      }
+                      var text_str = hit._source.text
+                      if (hit.highlight.text) {
+                        text_str = hit.highlight.text[0]
+                      }
+                      article.appendChild(
+                        <a href={sectionLocation} title={hit._source.title}
+                          class="md-search-result__link" data-md-rel="anchor"
+                          tabindex="-1">
+                          <article class="md-search-result__article">
+                            <h1 class="md-search-result__title">
+                              {{ __html: title_str }}
+                            </h1>
+                              <p class="md-search-result__teaser">
+                                {{ __html: truncate( text_str , 200) }}
+                              </p>
+                          </article>
+                        </a>
+                      )
+                    }
+                  })
+                  /* Push articles and section renderers onto stack */
+                  outer_this.stack_.push(() => outer_this.list_.appendChild(article), ...sections)
+                })
+                /* Gradually add results as long as the height of the container grows */
+                const container = outer_this.el_.parentNode
+                if (!(container instanceof HTMLElement))
                   throw new ReferenceError
-                if (toggle.checked) {
-                  toggle.checked = false
-                  toggle.dispatchEvent(new CustomEvent("change"))
-                }
+                while (outer_this.stack_.length &&
+                    container.offsetHeight >= container.scrollHeight - 16)
+                  (outer_this.stack_.shift())()
 
-                /* Hack: prevent default, as the navigation needs to be delayed due
-                   to the search body lock on mobile */
-                ev2.preventDefault()
-                setTimeout(() => {
-                  document.location.href = anchor.href
-                }, 100)
-              })
+                /* Bind click handlers for anchors */
+                const anchors = outer_this.list_.querySelectorAll("[data-md-rel=anchor]")
+                Array.prototype.forEach.call(anchors, anchor => {
+                  ["click", "keydown"].forEach(action => {
+                    anchor.addEventListener(action, ev2 => {
+                      if (action === "keydown" && ev2.keyCode !== 13)
+                        return
+
+                      /* Close search */
+                      const toggle = document.querySelector("[data-md-toggle=search]")
+                      if (!(toggle instanceof HTMLInputElement))
+                        throw new ReferenceError
+                      if (toggle.checked) {
+                        toggle.checked = false
+                        toggle.dispatchEvent(new CustomEvent("change"))
+                      }
+
+                      /* Hack: prevent default, as the navigation needs to be delayed due
+                        to the search body lock on mobile */
+                      ev2.preventDefault()
+                      setTimeout(() => {
+                        document.location.href = anchor.href
+                      }, 100)
+                    })
+                  })
+                })
+
+              }
             })
-          })
+          }
 
           /* Update search metadata */
-          switch (response.hits.total.value) {
+          switch (total_results) {
             case 0:
               outer_this.meta_.textContent = outer_this.message_.none
               break
@@ -336,13 +443,11 @@ export default class Result {
               break
             default:
               outer_this.meta_.textContent =
-                outer_this.message_.other.replace("#", response.hits.total.value)
+                outer_this.message_.other.replace("#", total_results)
           }
 
         }
       });
-
-
     }
   }
 }
