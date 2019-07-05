@@ -250,7 +250,7 @@ export default class Result {
       }
       var outer_this = this
       this.es_client.search({
-        index: outer_this.es_index_
+        index: outer_this.es_index_,
         body: post_body
       }, function (error, response, status) {
         if (error) {

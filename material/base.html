@@ -61,7 +61,7 @@
       {% endif %}
     {% endblock %}
     {% block libs %}
-      <script src="{{ 'assets/javascripts/modernizr.da468a5e.js' | url }}"></script>
+      <script src="{{ 'assets/javascripts/modernizr.7cb5d530.js' | url }}"></script>
     {% endblock %}
     {% block fonts %}
       {% if font != false %}
@@ -175,7 +175,7 @@
       {% endblock %}
     </div>
     {% block scripts %}
-      <script src="{{ 'assets/javascripts/application.3690bf4d.js' | url }}"></script>
+      <script src="{{ 'assets/javascripts/application.fbd8f156.js' | url }}"></script>
       {% if lang.t("search.language") != "en" %}
         {% set languages = lang.t("search.language").split(",") %}
         {% if languages | length and languages[0] != "" %}
@@ -196,7 +196,7 @@
           {% endif %}
         {% endif %}
       {% endif %}
-      <script>app.initialize({version:"{{ mkdocs_version }}",url:{base:"{{ base_url }}"},es_host:"{{ config.extra.es_host }}",es_log_level:"{{ config.extra.es_log_level | default('error') }}"})</script>
+      <script>app.initialize({es:{host:"{{ config.extra.es_host }}",log_level:"{{ config.extra.es_log_level | default('error') }}",index_name:"{{ config.extra.es_index | default('mkdocs') }}"}})</script>
       {% for path in config["extra_javascript"] %}
         <script src="{{ path | url }}"></script>
       {% endfor %}
