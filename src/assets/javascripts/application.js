@@ -287,13 +287,8 @@ function initialize(config) { // eslint-disable-line func-style
     /* Component: search results */
     new Material.Event.Listener("[data-md-component=query]", [
       "focus", "keyup", "change"
-    ], new Material.Search.Result("[data-md-component=result]", () => {
-      return fetch(`${config.url.base}/${
-        config.version < "0.17" ? "mkdocs" : "search"
-      }/search_index.json`, {
-        credentials: "same-origin"
-      }).then(response => response.json())
-    }, config.es_host, config.es_log_level)).listen()
+    ], new Material.Search.Result("[data-md-component=result]",
+      config.es.host, config.es.log_level, config.es.index_name )).listen()
 
     /* Listener: focus input after form reset */
     new Material.Event.Listener("[data-md-component=reset]", "click", () => {

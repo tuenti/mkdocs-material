@@ -346,12 +346,11 @@
       <!-- Initialize application -->
       <script>
         app.initialize({
-          version: "{{ mkdocs_version }}",
-          url: {
-            base: "{{ base_url }}"
-          },
-          es_host: "{{ config.extra.es_host }}",
-          es_log_level: "{{ config.extra.es_log_level | default('error') }}"
+          es: {
+            host: "{{ config.extra.es_host }}",
+            log_level: "{{ config.extra.es_log_level | default('error') }}",
+            index_name: "{{ config.extra.es_index | default('mkdocs') }}"
+          }
         });
       </script>
       {% for path in config["extra_javascript"] %}

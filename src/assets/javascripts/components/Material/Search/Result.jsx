@@ -99,8 +99,6 @@ export default class Result {
    * @constructor
    *
    * @property {HTMLElement} el_ - Search result container
-   * @property {(Array<Object>|Function)} data_ - Raw document data
-   * @property {Object} docs_ - Indexed documents
    * @property {HTMLElement} meta_ - Search meta information
    * @property {HTMLElement} list_ - Search result list
    * @property {Array<string>} lang_ - Search languages
@@ -108,11 +106,17 @@ export default class Result {
    * @property {Object} index_ - Search index
    * @property {Array<Function>} stack_ - Search result stack
    * @property {string} value_ - Last input value
+   * @property {string} es_host_ - ElasticSearch host
+   * @property {string} es_log_level_ - ElasticSearch log level
+   * @property {string} es_index_ - ElasticSearch index
+   * @property {string] es_client - ElasticSearch client
    *
    * @param {(string|HTMLElement)} el - Selector or HTML element
-   * @param {(Array<Object>|Function)} data - Function providing data or array
+   * @param {string} es_host - ElasticSearch host
+   * @param {string} es_log_level - ElasticSearch log level
+   * @param {string} es_index - ElasticSearch index
    */
-  constructor(el, data, es_host, es_log_level) {
+  constructor(el, es_host, es_log_level, es_index) {
     const ref = (typeof el === "string")
       ? document.querySelector(el)
       : el
@@ -124,7 +128,9 @@ export default class Result {
     const [meta, list] = Array.prototype.slice.call(this.el_.children)
 
     /* Set data, metadata and list elements */
-    this.data_ = data
+    this.es_host_ = es_host
+    this.es_log_level_ = es_log_level
+    this.es_index_ = es_index
     this.meta_ = meta
     this.list_ = list
 
@@ -145,11 +151,6 @@ export default class Result {
     this.lang_ = translate("search.language").split(",")
       .filter(Boolean)
       .map(lang => lang.trim())
-
-    this.es_client = new elasticsearch.Client({
-      host: es_host,
-      log: es_log_level
-    });
   }
 
   /**
@@ -161,7 +162,15 @@ export default class Result {
 
     /* Initialize index, if this has not be done yet */
     if (ev.type === "focus" && !this.initialized_) {
-        this.initialized_ = true
+        this.es_client = new elasticsearch.Client({
+          host: this.es_host_,
+          log: this.es_log_level_
+        });
+
+        if (this.es_client) {
+          this.initialized_ = true
+        }
+
         /* Register event handler for lazy rendering */
         const container = this.el_.parentNode
         if (!(container instanceof HTMLElement))
@@ -241,7 +250,7 @@ export default class Result {
       }
       var outer_this = this
       this.es_client.search({
-        index: 'mkdocs', // TODO: parametrize index name
+        index: outer_this.es_index_
         body: post_body
       }, function (error, response, status) {
         if (error) {
@@ -313,7 +322,7 @@ export default class Result {
                 "post_tags": "</em>"
               }
             }
-            msearch_body.push({"index": "mkdocs"}) // TODO: Parametrize
+            msearch_body.push({"index": outer_this.es_index_})
             msearch_body.push(section_post_body)
           })
           if (msearch_body.length > 0) {
