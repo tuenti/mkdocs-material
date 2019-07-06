@@ -28,38 +28,6 @@ import elasticsearch from "elasticsearch"
  * ------------------------------------------------------------------------- */
 
 /**
- * Escape a regular expression string
- *
- * Taken from the package `escape-string-regexp`
- *
- * @param regex - Regular expresison string
- *
- * @return
- */
-const escapeRegex = regex => {
-	return regex.replace(/[|\\{}()[\]^$+*?.-]/g, '\\$&');
-};
-
-/**
- * Escape HTML strings
- *
- * Documentation may contain code JavaScript code snippets which would get
- * executed when inserted into the DOM as plain HTML.
- *
- * See https://github.com/squidfunk/mkdocs-material/issues/906
- *
- * @param {string} html - HTML string
- *
- * @return {string} Escaped HTML string
- */
-const escapeHTML = html => {
-  var text = document.createTextNode(html);
-  var p = document.createElement('p');
-  p.appendChild(text);
-  return p.innerHTML;
-}
-
-/**
  * Truncate a string after the given number of character
  *
  * This is not a reasonable approach, since the summaries kind of suck. It
@@ -93,7 +61,7 @@ const translate = key => {
   return meta.content
 }
 
-function buildElasticSearchQuery(query_value) {
+function buildElasticSearchMainQuery(query_value) {
   const post_body = {
     "_source": ["title", "location"],
     "size": 50,
@@ -142,7 +110,7 @@ function buildElasticSearchQuery(query_value) {
   return post_body
 }
 
-async function performElasticSearchQuery(es_client, es_index, post_body, callback) {
+async function performElasticSearchMainQuery(es_client, es_index, post_body, callback) {
   try {
     const response = await es_client.search({
         index: es_index,
@@ -153,6 +121,85 @@ async function performElasticSearchQuery(es_client, es_index, post_body, callbac
     callback(err);
   }
 }
+
+function buildElasticSearchSectionQuery(size, parent_id, query_value) {
+  const section_post_body = { // Didn't want to repeat myself, but life is hard sometimes
+    "_source": ["title", "location", "text"],
+    "size": size,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "parent_document": "section"
+            }
+          },
+          {
+            "parent_id": {
+              "type": "section",
+              "id": parent_id
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "match": {
+                    "title": {
+                      "query": query_value,
+                      "boost": 5
+                    }
+                  }
+                },
+                {
+                  "match": {
+                    "text": {
+                      "query": query_value,
+                      "boost": 3
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "highlight": {
+      "fields": {
+        "text": {},
+        "title": {}
+      },
+      "pre_tags": "<em>",
+      "post_tags": "</em>"
+    }
+  }
+  return section_post_body
+}
+
+function buildMSearchBody(main_query_hits, query_value, es_index) {
+  let msearch_body = []
+  main_query_hits.forEach((hit) => {
+    let size = hit.highlight.title ? hit.highlight.title.length : 0
+    size += hit.highlight.text ? hit.highlight.text.length : 0
+    const section_post_body = buildElasticSearchSectionQuery(size, hit._id, query_value)
+    msearch_body.push({"index": es_index})
+    msearch_body.push(section_post_body)
+  })
+  return msearch_body
+}
+
+async function performElasticSearchSectionsQuery(es_client, post_body, callback) {
+  try {
+    const response = await es_client.msearch({
+        body: post_body
+    });
+    callback(null, response);
+  } catch (err) {
+    callback(err);
+  }
+}
+
 
 /* ----------------------------------------------------------------------------
  * Class
@@ -262,102 +309,35 @@ export default class Result {
         this.meta_.textContent = this.message_.placeholder
         return
       }
+
       var outer_this = this
       /* Perform search on index and group sections by document */
-      const post_body = buildElasticSearchQuery(this.value_)
-      performElasticSearchQuery(this.es_client_, this.es_.index_name, post_body, function(err, response) {
+      const post_body = buildElasticSearchMainQuery(this.value_)
+      performElasticSearchMainQuery(this.es_client_, this.es_.index_name, post_body, function(err, response) {
         if (err !== null) {
-          console.error("Error during elastic search query: " + error)
+          console.error("Error during elastic search query: " + err)
         } else {
-          var result = response.hits.hits
-          var total_results = response.hits.total.value
+          let main_query_hits = response.hits.hits
+          let main_query_number_of_hits = response.hits.total.value
           /* Reset stack and render results */
           outer_this.stack_ = []
-          var msearch_body = []
-          result.forEach((hit) => {
-            // Enrich sections
-            var size = 0
-            if (hit.highlight.title) {
-              size += hit.highlight.title.length
-            }
-            if (hit.highlight.text) {
-              size += hit.highlight.text.length
-            }
-            const section_post_body = { // Didn't want to repeat myself, but life is hard sometimes
-              "_source": ["title", "location", "text"],
-              "size": size,
-              "query": {
-                "bool": {
-                  "must": [
-                    {
-                      "match": {
-                        "parent_document": "section"
-                      }
-                    },
-                    {
-                      "parent_id": {
-                        "type": "section",
-                        "id": hit._id
-                      }
-                    },
-                    {
-                      "bool": {
-                        "should": [
-                          {
-                            "match": {
-                              "title": {
-                                "query": outer_this.value_,
-                                "boost": 5
-                              }
-                            }
-                          },
-                          {
-                            "match": {
-                              "text": {
-                                "query": outer_this.value_,
-                                "boost": 3
-                              }
-                            }
-                          }
-                        ]
-                      }
-                    }
-                  ]
-                }
-              },
-              "highlight": {
-                "fields": {
-                  "text": {},
-                  "title": {}
-                },
-                "pre_tags": "<em>",
-                "post_tags": "</em>"
-              }
-            }
-            msearch_body.push({"index": outer_this.es_.index_name})
-            msearch_body.push(section_post_body)
-          })
+          /* Enrich sections */
+          let msearch_body = buildMSearchBody(main_query_hits, outer_this.value_, outer_this.es_.index_name)
           if (msearch_body.length > 0) {
-            outer_this.es_client_.msearch({
-              body: msearch_body
-            }, function (error, sections_response, status) {
-              if (error) {
-                console.error("Error during elastic msearch query: " + error)
-              }
-              else {
+            performElasticSearchSectionsQuery(outer_this.es_client_, msearch_body, function(err, sections_response) {
+              if (err !== null) {
+                console.error("Error during elastic msearch query: " + err)
+              } else {
                 var section_result = sections_response.responses
                 section_result.forEach((section_hit, index) => {
-                  const hit = result[index]
+                  const hit = main_query_hits[index]
                   const articleLocation = outer_this.base_url_ + "/" + hit._source.location
-                  var title_str = hit._source.title
-                  if (hit.highlight.title) {
-                    title_str = hit.highlight.title[0]
-                  }
+                  const title_str = hit.highlight.title ? hit.highlight.title[0] : hit._source.title
 
                   // Try to find the best title teaser
-                  var teaserHighlight = ""
+                  let teaserHighlight = ""
                   section_hit.hits.hits.forEach((section_obj) => {
-                    if (section_obj._source.title == result[index]._source.title) {
+                    if (section_obj._source.title == main_query_hits[index]._source.title) {
                       if (section_obj.highlight.text) {
                         teaserHighlight = section_obj.highlight.text[0]
                       }
@@ -448,13 +428,12 @@ export default class Result {
                     })
                   })
                 })
-
               }
-            })
+            });
           }
 
           /* Update search metadata */
-          switch (total_results) {
+          switch (main_query_number_of_hits) {
             case 0:
               outer_this.meta_.textContent = outer_this.message_.none
               break
@@ -463,7 +442,7 @@ export default class Result {
               break
             default:
               outer_this.meta_.textContent =
-                outer_this.message_.other.replace("#", total_results)
+                outer_this.message_.other.replace("#", main_query_number_of_hits)
           }
         }
       });
