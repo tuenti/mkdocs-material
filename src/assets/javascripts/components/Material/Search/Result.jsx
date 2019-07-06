@@ -62,6 +62,67 @@ const translate = key => {
   return meta.content
 }
 
+function buildElasticSearchQuery(query_value) {
+  const post_body = {
+    "_source": ["title", "location"],
+    "size": 50,
+    "query": {
+      "bool": {
+        "must": [
+          {
+            "match": {
+              "parent_document": "full_doc"
+            }
+          },
+          {
+            "bool": {
+              "should": [
+                {
+                  "match": {
+                    "title": {
+                      "query": query_value,
+                      "boost": 5
+                    }
+                  }
+                },
+                {
+                  "match": {
+                    "text": {
+                      "query": query_value,
+                      "boost": 3
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "highlight": {
+      "fields": {
+        "text": {},
+        "title": {}
+      },
+      "pre_tags": "<em>",
+      "post_tags": "</em>"
+    }
+  }
+  return post_body
+}
+
+async function performElasticSearchQuery(es_client, es_index, post_body, callback) {
+  try {
+    const response = await es_client.search({
+        index: es_index,
+        body: post_body
+    });
+    callback(null, response);
+  } catch (err) {
+    callback(err);
+  }
+}
+
 /* ----------------------------------------------------------------------------
  * Class
  * ------------------------------------------------------------------------- */
@@ -170,62 +231,13 @@ export default class Result {
         this.meta_.textContent = this.message_.placeholder
         return
       }
-
-      /* Perform search on index and group sections by document */
-      const post_body = {
-        "_source": ["title", "location"],
-        "size": 50,
-        "query": {
-          "bool": {
-            "must": [
-              {
-                "match": {
-                  "parent_document": "full_doc"
-                }
-              },
-              {
-                "bool": {
-                  "should": [
-                    {
-                      "match": {
-                        "title": {
-                          "query": this.value_,
-                          "boost": 5
-                        }
-                      }
-                    },
-                    {
-                      "match": {
-                        "text": {
-                          "query": this.value_,
-                          "boost": 3
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        },
-        "highlight": {
-          "fields": {
-            "text": {},
-            "title": {}
-          },
-          "pre_tags": "<em>",
-          "post_tags": "</em>"
-        }
-      }
       var outer_this = this
-      this.es_client_.search({
-        index: outer_this.es_.index_name,
-        body: post_body
-      }, function (error, response, status) {
-        if (error) {
+      /* Perform search on index and group sections by document */
+      const post_body = buildElasticSearchQuery(this.value_)
+      performElasticSearchQuery(this.es_client_, this.es_.index_name, post_body, function(err, response) {
+        if (err !== null) {
           console.error("Error during elastic search query: " + error)
-        }
-        else {
+        } else {
           var result = response.hits.hits
           var total_results = response.hits.total.value
           /* Reset stack and render results */
@@ -422,7 +434,6 @@ export default class Result {
               outer_this.meta_.textContent =
                 outer_this.message_.other.replace("#", total_results)
           }
-
         }
       });
     }
