@@ -8,6 +8,7 @@
   "plugins": [
     ["@babel/plugin-transform-react-jsx", {
       "pragma": "JSX.createElement"
-    }]
+    }],
+    ["@babel/transform-runtime"]
   ]
 }

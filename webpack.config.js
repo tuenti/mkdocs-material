@@ -24,7 +24,7 @@ const fs = require("fs")
 const cssmin = require("cssmin")
 const path = require("path")
 const html = require("html-minifier")
-const uglify = require("uglify-js")
+const terser = require("terser")
 const webpack = require("webpack")
 
 /* ----------------------------------------------------------------------------
@@ -35,7 +35,7 @@ const CopyPlugin = require("copy-webpack-plugin")
 const EventHooksPlugin = require("event-hooks-webpack-plugin")
 const { CallbackTask } = require("event-hooks-webpack-plugin/lib/tasks")
 const OptimizeCSSAssetsPlugin = require("optimize-css-assets-webpack-plugin")
-const UglifyJsPlugin = require("uglifyjs-3-webpack-plugin")
+const TerserPlugin = require("terser-webpack-plugin")
 const ImageminPlugin = require("imagemin-webpack-plugin").default
 const ManifestPlugin = require("webpack-manifest-plugin")
 
@@ -163,7 +163,7 @@ module.exports = (_env, args) => { // eslint-disable-line complexity
           to: "assets/javascripts/lunr",
           from: "*.js",
           transform: content => {
-            return uglify.minify(content.toString()).code
+            return terser.minify(content.toString()).code
           }
         },
 
@@ -256,7 +256,7 @@ module.exports = (_env, args) => { // eslint-disable-line complexity
     /* Optimizations */
     optimization: {
       minimizer: [
-        new UglifyJsPlugin(),
+        new TerserPlugin(),
         new OptimizeCSSAssetsPlugin({})
       ],
       splitChunks: {
