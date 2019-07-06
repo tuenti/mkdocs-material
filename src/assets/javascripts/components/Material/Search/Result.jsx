@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2018 Martin Donath <martin.donath@squidfunk.com>
+ * Copyright (c) 2016-2019 Martin Donath <martin.donath@squidfunk.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -20,13 +20,44 @@
  * IN THE SOFTWARE.
  */
 
-import escape from "escape-string-regexp"
 import lunr from "expose-loader?lunr!lunr"
 import elasticsearch from "elasticsearch"
 
 /* ----------------------------------------------------------------------------
  * Functions
  * ------------------------------------------------------------------------- */
+
+/**
+ * Escape a regular expression string
+ *
+ * Taken from the package `escape-string-regexp`
+ *
+ * @param regex - Regular expresison string
+ *
+ * @return
+ */
+const escapeRegex = regex => {
+	return regex.replace(/[|\\{}()[\]^$+*?.-]/g, '\\$&');
+};
+
+/**
+ * Escape HTML strings
+ *
+ * Documentation may contain code JavaScript code snippets which would get
+ * executed when inserted into the DOM as plain HTML.
+ *
+ * See https://github.com/squidfunk/mkdocs-material/issues/906
+ *
+ * @param {string} html - HTML string
+ *
+ * @return {string} Escaped HTML string
+ */
+const escapeHTML = html => {
+  var text = document.createTextNode(html);
+  var p = document.createElement('p');
+  p.appendChild(text);
+  return p.innerHTML;
+}
 
 /**
  * Truncate a string after the given number of character
