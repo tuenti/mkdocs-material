@@ -175,7 +175,7 @@
       {% endblock %}
     </div>
     {% block scripts %}
-      <script src="{{ 'assets/javascripts/application.fbd8f156.js' | url }}"></script>
+      <script src="{{ 'assets/javascripts/application.e211a7f8.js' | url }}"></script>
       {% if lang.t("search.language") != "en" %}
         {% set languages = lang.t("search.language").split(",") %}
         {% if languages | length and languages[0] != "" %}
@@ -196,7 +196,7 @@
           {% endif %}
         {% endif %}
       {% endif %}
-      <script>app.initialize({es:{host:"{{ config.extra.es_host }}",log_level:"{{ config.extra.es_log_level | default('error') }}",index_name:"{{ config.extra.es_index | default('mkdocs') }}"}})</script>
+      <script>app.initialize({url:{base:"{{ base_url }}"},es:{host:"{{ config.extra.es_host }}",log_level:"{{ config.extra.es_log_level | default('error') }}",index_name:"{{ config.extra.es_index | default('mkdocs') }}"}})</script>
       {% for path in config["extra_javascript"] %}
         <script src="{{ path | url }}"></script>
       {% endfor %}

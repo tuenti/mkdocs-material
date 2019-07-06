@@ -346,6 +346,9 @@
       <!-- Initialize application -->
       <script>
         app.initialize({
+          url: {
+            base: "{{ base_url }}"
+          },
           es: {
             host: "{{ config.extra.es_host }}",
             log_level: "{{ config.extra.es_log_level | default('error') }}",

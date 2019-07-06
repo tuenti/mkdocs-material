@@ -287,8 +287,7 @@ function initialize(config) { // eslint-disable-line func-style
     /* Component: search results */
     new Material.Event.Listener("[data-md-component=query]", [
       "focus", "keyup", "change"
-    ], new Material.Search.Result("[data-md-component=result]",
-      config.es.host, config.es.log_level, config.es.index_name )).listen()
+    ], new Material.Search.Result("[data-md-component=result]", config.url.base, config.es)).listen()
 
     /* Listener: focus input after form reset */
     new Material.Event.Listener("[data-md-component=reset]", "click", () => {

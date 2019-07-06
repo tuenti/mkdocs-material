@@ -62,31 +62,6 @@ const translate = key => {
   return meta.content
 }
 
-/**
- * Return a deep copy of an object
- *
- * @param {string} obj - The object to be copied
- *
- * @return {string} The copied object
- */
-const deepclone = obj => {
-  var new_obj = {}
-
-  Object.keys(obj).forEach(function(key) {
-    new_obj[ key ] = obj[ key ];
-  });
-  return new_obj
-}
-
-/**
- * TO BE COMPLETED
- *
- * @param {string} a - A
- *
- * @return {string} B
- */
-const getData = (resultObj, page) => {
-}
 /* ----------------------------------------------------------------------------
  * Class
  * ------------------------------------------------------------------------- */
@@ -106,17 +81,15 @@ export default class Result {
    * @property {Object} index_ - Search index
    * @property {Array<Function>} stack_ - Search result stack
    * @property {string} value_ - Last input value
-   * @property {string} es_host_ - ElasticSearch host
-   * @property {string} es_log_level_ - ElasticSearch log level
-   * @property {string} es_index_ - ElasticSearch index
-   * @property {string] es_client - ElasticSearch client
+   * @property {boolean} initialized_ - Search initialized
+   * @property {Map<string>} es_ - ElasticSearch parameters (host, log_level, index_name)
+   * @property {string} es_client_ - ElasticSearch client
    *
    * @param {(string|HTMLElement)} el - Selector or HTML element
-   * @param {string} es_host - ElasticSearch host
-   * @param {string} es_log_level - ElasticSearch log level
-   * @param {string} es_index - ElasticSearch index
+   * @param {string} base_url - Site base url
+   * @param {Map<string>} es - ElasticSearch parameters (host, log_level, index_name)
    */
-  constructor(el, es_host, es_log_level, es_index) {
+  constructor(el, base_url, es) {
     const ref = (typeof el === "string")
       ? document.querySelector(el)
       : el
@@ -127,10 +100,9 @@ export default class Result {
     /* Retrieve metadata and list element */
     const [meta, list] = Array.prototype.slice.call(this.el_.children)
 
-    /* Set data, metadata and list elements */
-    this.es_host_ = es_host
-    this.es_log_level_ = es_log_level
-    this.es_index_ = es_index
+    /* Set base url, elasticsearch parameteres, metadata and list elements */
+    this.base_url_ = base_url
+    this.es_ = es
     this.meta_ = meta
     this.list_ = list
 
@@ -162,14 +134,10 @@ export default class Result {
 
     /* Initialize index, if this has not be done yet */
     if (ev.type === "focus" && !this.initialized_) {
-        this.es_client = new elasticsearch.Client({
-          host: this.es_host_,
-          log: this.es_log_level_
+        this.es_client_ = new elasticsearch.Client({
+          host: this.es_.host,
+          log: this.es_.log_level
         });
-
-        if (this.es_client) {
-          this.initialized_ = true
-        }
 
         /* Register event handler for lazy rendering */
         const container = this.el_.parentNode
@@ -180,6 +148,7 @@ export default class Result {
               container.offsetHeight >= container.scrollHeight - 16)
             this.stack_.splice(0, 10).forEach(render => render())
         })
+        this.initialized_ = true
 
     /* Execute search on new input event */
     } else if (ev.type === "focus" || ev.type === "keyup") {
@@ -187,7 +156,7 @@ export default class Result {
       if (!(target instanceof HTMLInputElement))
         throw new ReferenceError
 
-      /* Abort early, if index is not build or input hasn't changed */
+      /* Abort early, if not initialized or input hasn't changed */
       if (!this.initialized_ || target.value === this.value_)
         return
 
@@ -249,12 +218,12 @@ export default class Result {
         }
       }
       var outer_this = this
-      this.es_client.search({
-        index: outer_this.es_index_,
+      this.es_client_.search({
+        index: outer_this.es_.index_name,
         body: post_body
       }, function (error, response, status) {
         if (error) {
-          console.log("search error: "+error)
+          console.error("Error during elastic search query: " + error)
         }
         else {
           var result = response.hits.hits
@@ -322,22 +291,21 @@ export default class Result {
                 "post_tags": "</em>"
               }
             }
-            msearch_body.push({"index": outer_this.es_index_})
+            msearch_body.push({"index": outer_this.es_.index_name})
             msearch_body.push(section_post_body)
           })
           if (msearch_body.length > 0) {
-            outer_this.es_client.msearch({
+            outer_this.es_client_.msearch({
               body: msearch_body
             }, function (error, sections_response, status) {
               if (error) {
-                console.log("msearch error: "+error)
+                console.error("Error during elastic msearch query: " + error)
               }
               else {
-                console.log("MSearch took", sections_response.took)
                 var section_result = sections_response.responses
                 section_result.forEach((section_hit, index) => {
                   const hit = result[index]
-                  const articleLocation = "/" + hit._source.location // FIXME add config base url
+                  const articleLocation = outer_this.base_url_ + "/" + hit._source.location
                   var title_str = hit._source.title
                   if (hit.highlight.title) {
                     title_str = hit.highlight.title[0]
@@ -375,7 +343,7 @@ export default class Result {
                   // const sections = []
                   const sections = section_hit.hits.hits.map(hit => {
                     return () => {
-                      const sectionLocation = "/" + hit._source.location // FIXME add config base url
+                      const sectionLocation = outer_this.base_url_ + "/" + hit._source.location
                       var title_str = hit._source.title
                       if (hit.highlight.title) {
                         title_str = hit.highlight.title[0]
