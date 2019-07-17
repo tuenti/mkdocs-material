@@ -80,6 +80,7 @@ function buildElasticSearchMainQuery(query_value) {
                   "match": {
                     "title": {
                       "query": query_value,
+                      "operator": "and",
                       "boost": 5
                     }
                   }
@@ -88,6 +89,7 @@ function buildElasticSearchMainQuery(query_value) {
                   "match": {
                     "text": {
                       "query": query_value,
+                      "operator": "and",
                       "boost": 3
                     }
                   }
@@ -147,6 +149,7 @@ function buildElasticSearchSectionQuery(size, parent_id, query_value) {
                   "match": {
                     "title": {
                       "query": query_value,
+                      "operator": "and",
                       "boost": 5
                     }
                   }
@@ -155,6 +158,7 @@ function buildElasticSearchSectionQuery(size, parent_id, query_value) {
                   "match": {
                     "text": {
                       "query": query_value,
+                      "operator": "and",
                       "boost": 3
                     }
                   }
