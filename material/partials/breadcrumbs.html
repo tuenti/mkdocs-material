@@ -13,8 +13,19 @@
       {% endfor %}
     {% endif %}
     <li class="wy-breadcrumbs-aside">
-      {% if page.edit_url %}
-        {% if page.file.src_path not in config.extra.no_edit_paths %}
+      {% if page.file.src_path not in config.extra.no_edit_paths %}
+        {% if page.source_url %}
+        <a href="{{ page.source_url }}" target="_blank" title="View source" class="md-icon md-content__icon">
+          {% if 'github' in page.source_url %}
+          <svg viewBox="0 0 24 24" width="24" height="24">
+            <use xlink:href="#__github" width="24" height="24"></use>
+          </svg>
+          {% else %}
+          &#xE86F;
+          {% endif %}
+        </a>
+        {% endif %}
+        {% if page.edit_url %}
           <a href="{{ page.edit_url }}" target="_blank" title="{{ lang.t('edit.link.title') }}" class="md-icon md-content__icon">&#xE3C9;</a>
           {% if config.extra.new_file_uri %}
           {% set parent_path = page.file.src_path.split('/')[:-1] | join('/') + '/' %}
